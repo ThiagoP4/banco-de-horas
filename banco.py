@@ -9,33 +9,39 @@ meses = {
         }
 
 # Função para ler as entradas e saídas do arquivo, considerando a data
-def ler_arquivo():
-    with open("thiago.txt", "r", encoding="utf-8") as f:
-        linhas = f.readlines()
-        hora_entrada = []
-        entra_almoco = []
-        saida_almoco = []
-        hora_saida = []
-        datas = []
-        
-        for linha in linhas:
-            if linha.strip():  # Ignora linhas vazias
-                # Dividindo data, entrada e saída
-                data, entrada, e_almoco, s_almoco, saida = linha.strip().split()  # Ex: '18/11 08:10 12:00 13:00 18:16'
-                # Convertendo a data para datetime
-                data = datetime.strptime(data, '%d/%m')  # '18/11' -> 18 de novembro, sem ano
-                # Adicionando data e horários à lista
-                hora_entrada.append(datetime.strptime(f"{data.strftime('%d/%m')}/{entrada}", '%d/%m/%H:%M'))
-                entra_almoco.append(datetime.strptime(f"{data.strftime('%d/%m')}/{e_almoco}", '%d/%m/%H:%M'))
-                saida_almoco.append(datetime.strptime(f"{data.strftime('%d/%m')}/{s_almoco}", '%d/%m/%H:%M'))
-                hora_saida.append(datetime.strptime(f"{data.strftime('%d/%m')}/{saida}", '%d/%m/%H:%M'))
-                datas.append(data)
+def ler_arquivo():    
+    hora_entrada = []
+    entra_almoco = []
+    saida_almoco = []
+    hora_saida = []
+    datas = []
 
+    with open("thiago.txt", "r", encoding="utf-8") as f:
+
+        for linha in f:
+            if not linha.strip():
+                continue # Ignora as linhas vazias
+            
+            try:
+                data_str, h1, h2, h3, h4 = linha.strip().split()
+
+                data = datetime.strptime(data_str, "%d/%m/%Y")
+
+                # Adicionando data e horários à lista
+                hora_entrada.append(datetime.strptime(h1,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+                entra_almoco.append(datetime.strptime(h2,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+                saida_almoco.append(datetime.strptime(h3,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+                hora_saida.append(datetime.strptime(h4,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+                datas.append(data)
+            except ValueError as e:
+                print(f"Erro ao processar linha: {linha.strip()} -> {e}")
         return datas, hora_entrada, entra_almoco, saida_almoco, hora_saida
 
 
+
+
 # Função para calcular o banco de horas
-def calcular_horas(datas, horas_entrada, entra_almoco, saida_almoco, horas_saida, resultado_label):
+def calcular_horas(horas_entrada, entra_almoco, saida_almoco, horas_saida, resultado_label):
     carga_horaria = timedelta(hours=8)
     banco = timedelta(0)
 
