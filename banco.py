@@ -2,12 +2,6 @@ import tkinter as tk
 from tkinter import *
 from datetime import datetime, timedelta
 
-meses = {
-        "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
-        "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
-        "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
-        }
-
 # Função para ler as entradas e saídas do arquivo, considerando a data
 def ler_arquivo():    
     hora_entrada = []
@@ -36,8 +30,6 @@ def ler_arquivo():
             except ValueError as e:
                 print(f"Erro ao processar linha: {linha.strip()} -> {e}")
         return datas, hora_entrada, entra_almoco, saida_almoco, hora_saida
-
-
 
 
 # Função para calcular o banco de horas
@@ -81,44 +73,47 @@ def Banco_horas():
 
     data_atual = datetime.now().strftime("%d/%m")
     data_var = tk.StringVar(value=data_atual)
+    
+    ano_atual = datetime.now().strftime("%Y")
+    ano_var = tk.StringVar(value=ano_atual)
 
     # Label para mostrar o banco de horas
     resultado_label = tk.Label(root, text="Banco de Horas: 00:00", font=("Arial", 16))
     resultado_label.pack(pady=20)
 
-    # Campo de entrada de data
-    data_label = tk.Label(root, text="Data (dd/mm):", font=("Arial", 12))
-    data_label.pack(pady=5)
-    data_entry = tk.Entry(root, width=10, font=("Arial", 16), textvariable=data_var)
-    data_entry.pack(pady=5)
+    frame_data = tk.Frame(root)
+    frame_data.pack(pady=5)
 
-    # Campos de entrada para horas de entrada e saída
-    entrada_label = tk.Label(root, text="Hora de Entrada (HH:MM):", font=("Arial", 12))
-    entrada_label.pack(pady=5)
-    entrada_entry = tk.Entry(root, width=10, font=("Arial", 16))
-    entrada_entry.pack(pady=5)
+    # Usar frame_data como contêiner para os elementos com grid
+    data_label = tk.Label(frame_data, text="Data (dd/mm):", font=("Arial", 12))
+    data_label.grid(row=0, column=0, padx=5, pady=2)
+    data_entry = tk.Entry(frame_data, width=10, font=("Arial", 16), textvariable=data_var, justify="center")
+    data_entry.grid(row=1, column=0, padx=5, pady=(0,40))
 
+    ano_label = tk.Label(frame_data, text='Ano (yyyy):', font=("Arial", 12))
+    ano_label.grid(row=0, column=1, padx=5, pady=2)
+    ano_entry = tk.Entry(frame_data, width=10, font=("Arial", 16), textvariable=ano_var, justify="center")
+    ano_entry.grid(row=1, column=1, padx=5, pady=(0,40))
 
-    linha_frame = tk.Frame(root)
-    linha_frame.pack(pady=5)
+    entrada_label = tk.Label(frame_data, text="Hora de Entrada (HH:MM):", font=("Arial", 12), )
+    entrada_label.grid(row=2, column=0, padx=15, pady=5)
+    entrada_entry = tk.Entry(frame_data, width=10, font=("Arial", 16), justify="center")
+    entrada_entry.grid(row=3, column=0, pady=5, padx=15)
 
-    # Label e Entry para Entrada de Almoço
-    e_almoco_label = tk.Label(linha_frame , text="Entrada de Almoco (HH:MM):", font=("Arial", 12))
-    e_almoco_label.grid(row=0, column=0, padx=15)
-    e_almoco_entry = tk.Entry(linha_frame, width=10, font=("Arial", 16))
-    e_almoco_entry.grid(row=1, column=0, padx=15)
+    e_almoco_label = tk.Label(frame_data, text="Entrada de Almoço (HH:MM):", font=("Arial", 12))
+    e_almoco_label.grid(row=2, column=1, padx=15, pady=5)
+    e_almoco_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
+    e_almoco_entry.grid(row=3, column=1, padx=15)
 
-    # Label e Entry para Saída de Almoço
-    s_almoco_label = tk.Label(linha_frame, text="Saída Almoço (HH:MM):", font=("Arial", 12))
-    s_almoco_label.grid(row=0, column=1, padx=15)
-    s_almoco_entry = tk.Entry(linha_frame, width=10, font=("Arial", 16))
-    s_almoco_entry.grid(row=1, column=1, padx=15)
+    saida_label = tk.Label(frame_data, text="Hora de Saída (HH:MM):", font=("Arial", 12))
+    saida_label.grid(row=4, column=0, padx=15, pady=5)
+    saida_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
+    saida_entry.grid(row=5, column=0, padx=15, pady=(0, 80))
 
-
-    saida_label = tk.Label(root, text="Hora de Saída (HH:MM):", font=("Arial", 12))
-    saida_label.pack(pady=5)
-    saida_entry = tk.Entry(root, width=10, font=("Arial", 16))
-    saida_entry.pack(pady=5)
+    s_almoco_label = tk.Label(frame_data, text="Saída de Almoço (HH:MM):", font=("Arial", 12))
+    s_almoco_label.grid(row=4, column=1, padx=15, pady=5)
+    s_almoco_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
+    s_almoco_entry.grid(row=5, column=1, padx=15, pady=(0, 80))
 
     def compensar_horas():
         if compensa.get() == 1:
@@ -153,19 +148,16 @@ def Banco_horas():
             saida_entry.delete(0, tk.END)
 
     linha_frame2 = tk.Frame(root)
-    linha_frame2.pack(pady=5)
-
-    cb_compensar = Checkbutton(linha_frame2, text='Horas a Compensar?', variable=compensa, onvalue=1, offvalue=0, command=compensar_horas)
-    cb_compensar.grid(row=0, column=1, pady=10, sticky='w')
+    linha_frame2.pack(pady=10)
 
     # Função para adicionar uma nova linha no arquivo (só chamada quando o botão for clicado)
     def adicionar_horas():
 
-        data = data_entry.get()
+        data = data_entry.get() + '/' + ano_entry.get()
         
         # Verifica se a data está no formato correto
         try:
-            datetime.strptime(data, "%d/%m")  # Verifica se a data está no formato dd/mm
+            datetime.strptime(data, "%d/%m/%Y")  # Verifica se a data está no formato dd/mm/aaaa
         except ValueError:
             print("Formato de data inválido. Use dd/mm.")  # Erro simples para depuração
             return
@@ -193,16 +185,26 @@ def Banco_horas():
         s_almoco_entry.delete(0, tk.END)  
         saida_entry.delete(0, tk.END)
 
+    tk.Button(linha_frame2, text="Enviar", command=adicionar_horas).grid(row=0, column=0, padx=(350, 10))
+    Checkbutton(linha_frame2, text='Horas a Compensar?', variable=compensa, onvalue=1, offvalue=0, command=compensar_horas).grid(row=0, column=1, sticky='w', padx=(200,0))
+
     # Função para calcular o banco de horas (quando for clicado)
     def calcular_banco():
         datas, hora_entrada, entra_almoco, saida_almoco, hora_saida = ler_arquivo()
-        calcular_horas(datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, resultado_label)
+        calcular_horas(hora_entrada, entra_almoco, saida_almoco, hora_saida, resultado_label)
 
     # Função para exibir o banco de horas em uma nova janela
     def exibir_banco():
         banco = tk.Toplevel(root)  # Cria uma nova janela (Toplevel)
         banco.title("Banco de Horas")
         banco.geometry("500x500")
+        
+        meses = {
+        "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
+        "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
+        "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
+        }
+
 
         # Criando um Frame para conter a área de texto e a barra de rolagem
         frame = tk.Frame(banco)
@@ -228,9 +230,9 @@ def Banco_horas():
         resultado = ""
         for d, e, ea, sa, s in zip(datas, hora_entrada, entra_almoco, saida_almoco, hora_saida):
             mes = d.strftime('%m')
-            ano = datetime.now().year
+            ano = d.strftime('%Y')
             nome_mes = meses[mes]
-            mes = f"{nome_mes} de {datetime.now().year}"
+            mes = f"{nome_mes} de {ano}"
 
             if mes_atual != (mes, ano):
                 mes_atual = (mes, ano)
@@ -243,19 +245,11 @@ def Banco_horas():
 
 
     # Botão para adicionar a entrada
-    botao_adicionar = tk.Button(linha_frame2, text="Enviar", command=adicionar_horas)
-    botao_adicionar.grid(row=0, column=0, pady=10)
+    frame_linha3 = tk.Frame(root)
+    frame_linha3.pack(pady=(200,0))
 
-    linha_frame3 = tk.Frame(root)
-    linha_frame3.pack(pady=5)
-
-    # Botão para calcular o banco de horas
-    botao_calcular = tk.Button(linha_frame3, text="Calcular Banco de Horas", command=calcular_banco)
-    botao_calcular.grid(row=0, column=0, padx=10)
-
-    # Botão para exibir o banco de horas em uma nova janela
-    botao_exibir = tk.Button(linha_frame3, text="Exibir Banco de Horas", command=exibir_banco)
-    botao_exibir.grid(row=0, column=1, padx=10)
+    tk.Button(frame_linha3, text="Calcular Banco de Horas", command=calcular_banco).grid(row=0, column=0, padx=10)
+    tk.Button(frame_linha3, text="Exibir Banco de Horas", command=exibir_banco).grid(row=0, column=1, padx=10)
 
     # Rodando a interface gráfica
     root.mainloop()
