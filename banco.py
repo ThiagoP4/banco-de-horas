@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import *
+from tkinter import messagebox
 from datetime import datetime, timedelta
 
 # Função para ler as entradas e saídas do arquivo, considerando a data
@@ -154,12 +155,14 @@ def Banco_horas():
     def adicionar_horas():
 
         data = data_entry.get() + '/' + ano_entry.get()
-        
+        db_data, *_ = ler_arquivo()
+        data_banco = [d.strftime("%d/%m/%Y") for d in db_data]
+
         # Verifica se a data está no formato correto
         try:
             datetime.strptime(data, "%d/%m/%Y")  # Verifica se a data está no formato dd/mm/aaaa
-        except ValueError:
-            print("Formato de data inválido. Use dd/mm.")  # Erro simples para depuração
+        except ValueError as e:
+            messagebox.showerror("Erro", "Formato de data inválido. Use dd/mm.")
             return
         
 
@@ -174,6 +177,12 @@ def Banco_horas():
             s_almoco = s_almoco_entry.get()
             saida = saida_entry.get()
 
+        try:
+            if data in data_banco:  # Verifica se a data já existe
+                raise ValueError("O ponto deste dia já foi cadastrado.")
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e))
+            return   
         # Escreve no arquivo
         with open("thiago.txt", "a", encoding="utf-8") as f:
             f.write(f"{data} {entrada} {e_almoco} {s_almoco} {saida}\n")
