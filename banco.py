@@ -2,45 +2,75 @@ import tkinter as tk
 from tkinter import *
 from tkinter import messagebox
 from datetime import datetime, timedelta
+import sqlite3
+from sqlite3 import Error
+
+
+def conecta_db_banco():
+    conn = None
+    try:
+        conn = sqlite3.connect("banco_database.db")
+        return conn
+    except Error as e:
+        print("Error", {e})
+        return None
+    
+conn = conecta_db_banco()
+cursor = conn.cursor()
+cursor.execute("CREATE TABLE IF NOT EXISTS HORARIOS (data TEXT, hora_entrada TEXT, entra_almoco TEXT, saida_almoco TEXT, hora_saida TEXT, semana_prova INTEGER)")
+
+
 
 # Função para ler as entradas e saídas do arquivo, considerando a data
 def ler_arquivo():    
+    conn = conecta_db_banco()
+    if not conn:
+        return [], [], [], [], [], []
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM HORARIOS")
+    registros = cursor.fetchall()
+    conn.close()
+
     hora_entrada = []
     entra_almoco = []
     saida_almoco = []
     hora_saida = []
     datas = []
+    semana_prova = []
 
-    with open("thiago.txt", "r", encoding="utf-8") as f:
 
-        for linha in f:
-            if not linha.strip():
-                continue # Ignora as linhas vazias
-            
-            try:
-                data_str, h1, h2, h3, h4 = linha.strip().split()
+    for registro in registros:
 
-                data = datetime.strptime(data_str, "%d/%m/%Y")
+        data = datetime.strptime(registro[0], "%d/%m/%Y")
 
-                # Adicionando data e horários à lista
-                hora_entrada.append(datetime.strptime(h1,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                entra_almoco.append(datetime.strptime(h2,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                saida_almoco.append(datetime.strptime(h3,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                hora_saida.append(datetime.strptime(h4,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                datas.append(data)
-            except ValueError as e:
-                print(f"Erro ao processar linha: {linha.strip()} -> {e}")
-        return datas, hora_entrada, entra_almoco, saida_almoco, hora_saida
+        # Adicionando data e horários à lista
+        datas.append(data)
+        hora_entrada.append(datetime.strptime(registro[1],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        entra_almoco.append(datetime.strptime(registro[2],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        saida_almoco.append(datetime.strptime(registro[3],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        hora_saida.append(datetime.strptime(registro[4],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        
+        semana_prova.append(registro[5]) #armazena 0 ou 1
+
+    return datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova
 
 
 # Função para calcular o banco de horas
-def calcular_horas(horas_entrada, entra_almoco, saida_almoco, horas_saida, resultado_label):
-    carga_horaria = timedelta(hours=8)
+def calcular_horas(horas_entrada, entra_almoco, saida_almoco, horas_saida, resultado_label, semana_prova):
+    carga_horaria_normal = timedelta(hours=8)
     banco = timedelta(0)
+    
+    for entrada, e_almoco, s_almoco, saida, sp in zip(horas_entrada, entra_almoco, saida_almoco, horas_saida, semana_prova):
+        
+        # Verifica se os campos de almoço estão vazios ou são "00:00"
+        if e_almoco.time() == datetime.strptime("00:00", "%H:%M").time() and s_almoco.time() == datetime.strptime("00:00", "%H:%M").time():
+            diferenca = saida - entrada  # Ignora almoço
+        else:
+            diferenca = (saida - entrada) - (s_almoco - e_almoco)  # Cálculo normal
 
-    for entrada, e_almoco, s_almoco, saida in zip(horas_entrada, entra_almoco, saida_almoco, horas_saida):
-        diferenca = (saida - entrada) - (s_almoco - e_almoco) # Calcula o tempo trabalhado
-                        #9 horas        #1 hora
+        carga_horaria = carga_horaria_normal / 2 if int(sp) == 1 else carga_horaria_normal
+
         if diferenca < carga_horaria:
             falta = carga_horaria - diferenca
             banco -= falta
@@ -71,6 +101,7 @@ def Banco_horas():
     root.geometry("800x700")
 
     compensa = tk.IntVar(value=0)
+    sprova = tk.IntVar(value=0)
 
     data_atual = datetime.now().strftime("%d/%m")
     data_var = tk.StringVar(value=data_atual)
@@ -183,9 +214,19 @@ def Banco_horas():
         except ValueError as e:
             messagebox.showerror("Erro", str(e))
             return   
-        # Escreve no arquivo
-        with open("thiago.txt", "a", encoding="utf-8") as f:
-            f.write(f"{data} {entrada} {e_almoco} {s_almoco} {saida}\n")
+    
+
+        sp = sprova.get() #Pega o valor da checkbox
+        conn = conecta_db_banco()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO HORARIOS (data, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova) VALUES (?,?,?,?,?,?)", (data, entrada, e_almoco, s_almoco, saida, sp))
+                conn.commit()
+            except Error as e:
+                print(f"Erro ao inserir no banco: {e}")
+            finally:
+                conn.close()
 
         # Limpar os campos após a adição
         data_entry.delete(0, tk.END)
@@ -196,6 +237,8 @@ def Banco_horas():
 
     tk.Button(linha_frame2, text="Enviar", command=adicionar_horas).grid(row=0, column=0, padx=(350, 10))
     Checkbutton(linha_frame2, text='Horas a Compensar?', variable=compensa, onvalue=1, offvalue=0, command=compensar_horas).grid(row=0, column=1, sticky='w', padx=(200,0))
+    Checkbutton(linha_frame2, text='Semana de Prova?', variable=sprova, onvalue=1, offvalue=0).grid(row=1, column=1, sticky='w', padx=(200,0))
+
 
     # Função para calcular o banco de horas (quando for clicado)
     def calcular_banco():
@@ -231,13 +274,13 @@ def Banco_horas():
         scrollbar.config(command=text_widget.yview)
 
         # Lê os dados do arquivo
-        datas, hora_entrada, entra_almoco, saida_almoco, hora_saida = ler_arquivo()
+        datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
 
         mes_atual = None
 
         # Exibindo o conteúdo do banco de horas
         resultado = ""
-        for d, e, ea, sa, s in zip(datas, hora_entrada, entra_almoco, saida_almoco, hora_saida):
+        for d, e, ea, sa, s, sp in zip(datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova):
             mes = d.strftime('%m')
             ano = d.strftime('%Y')
             nome_mes = meses[mes]
@@ -246,7 +289,10 @@ def Banco_horas():
             if mes_atual != (mes, ano):
                 mes_atual = (mes, ano)
                 resultado += f"\n{nome_mes} de {ano}\n"
-            resultado += f"{d.strftime('%d/%m')} - Entrada: {e.strftime('%H:%M')} - Saída: {s.strftime('%H:%M')} - Almoco: {ea.strftime('%H:%M')} - {sa.strftime('%H:%M')}\n"
+                
+            prefixo = " 🥺" if sp == '1' else " "
+
+            resultado += f"{d.strftime('%d/%m')} - Entrada: {e.strftime('%H:%M')} - Saída: {s.strftime('%H:%M')} - Almoco: {ea.strftime('%H:%M')} - {sa.strftime('%H:%M')}{prefixo}\n"
 
         # Inserindo o resultado no widget Text
         text_widget.insert(tk.END, resultado)
