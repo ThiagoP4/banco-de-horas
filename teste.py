@@ -6,18 +6,30 @@ import sqlite3
 from sqlite3 import Error
 
 
-conn = None
-
-try:
-    conn = sqlite3.connect("banco_database.db")
-except Error as e:
-    print("Error", {e})
-finally:
-    if conn:
-        conn.close()
+def conecta_db_banco():
+    conn = None
+    try:
+        conn = sqlite3.connect("banco_database.db")
+        return conn
+    except Error as e:
+        print("Error", {e})
+        return None
+    
+conn = conecta_db_banco()
+cursor = conn.cursor()
+cursor.execute("CREATE TABLE IF NOT EXISTS HORARIOS (data TEXT, hora_entrada TEXT, entra_almoco TEXT, saida_almoco TEXT, hora_saida TEXT, semana_prova INTEGER)")
 
 # Função para ler as entradas e saídas do arquivo, considerando a data
 def ler_arquivo():    
+    conn = conecta_db_banco()
+    if not conn:
+        return [], [], [], [], [], []
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM HORARIOS ORDER BY data")
+    registros = cursor.fetchall()
+    conn.close()
+
     hora_entrada = []
     entra_almoco = []
     saida_almoco = []
@@ -25,27 +37,21 @@ def ler_arquivo():
     datas = []
     semana_prova = []
 
-    with open("teste.txt", "r", encoding="utf-8") as f:
 
-        for linha in f:
-            if not linha.strip():
-                continue # Ignora as linhas vazias
-            
-            try:
-                data_str, h1, h2, h3, h4, sp = linha.strip().split()
+    for registro in registros:
 
-                data = datetime.strptime(data_str, "%d/%m/%Y")
+        data = datetime.strptime(registro[0], "%d/%m/%Y")
 
-                # Adicionando data e horários à lista
-                hora_entrada.append(datetime.strptime(h1,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                entra_almoco.append(datetime.strptime(h2,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                saida_almoco.append(datetime.strptime(h3,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                hora_saida.append(datetime.strptime(h4,"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-                datas.append(data)
-                semana_prova.append(sp) #armazena 0 ou 1
-            except ValueError as e:
-                print(f"Erro ao processar linha: {linha.strip()} -> {e}")
-        return datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova
+        # Adicionando data e horários à lista
+        datas.append(data)
+        hora_entrada.append(datetime.strptime(registro[1],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        entra_almoco.append(datetime.strptime(registro[2],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        saida_almoco.append(datetime.strptime(registro[3],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        hora_saida.append(datetime.strptime(registro[4],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        
+        semana_prova.append(registro[5]) #armazena 0 ou 1
+
+    return datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova
 
 
 # Função para calcular o banco de horas
@@ -229,6 +235,17 @@ def Banco_horas():
         with open("teste.txt", "a", encoding="utf-8") as f:
             f.write(f"{data} {entrada} {e_almoco} {s_almoco} {saida} {sp}\n")
 
+        # Escreve no banco  
+        conn = conecta_db_banco()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO HORARIOS (data, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova) VALUES (?,?,?,?,?,?)", (data, entrada, e_almoco, s_almoco, saida, sp))
+                conn.commit()
+            except Error as e:
+                print(f"Erro ao inserir no banco: {e}")
+            finally:
+                conn.close()
     
         # Limpar os campos após a adição
         entrada_entry.delete(0, tk.END)
