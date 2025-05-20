@@ -10,16 +10,39 @@ def conecta_db_banco():
     conn = None
     try:
         conn = sqlite3.connect("banco_database.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS HORARIOS (
+                IDHORARIO INTEGER PRIMARY KEY AUTOINCREMENT, 
+                DATA TEXT, HORA_ENTRADA TEXT, 
+                ENTRA_ALMOCO TEXT, 
+                SAIDA_ALMOCO TEXT,
+                HORA_SAIDA TEXT,
+                SEMANA_PROVA BLOB, 
+                CODUSUARIO TEXT)""")
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS PERFIL (
+                IDPERFIL INTEGER PRIMARY KEY AUTOINCREMENT, 
+                CODPERFIL TEXT)
+                """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS USUARIO (
+                CODUSUARIO TEXT PRIMARY KEY, 
+                NOME TEXT,
+                EMAIL TEXT,
+                SENHA TEXT,
+                CODPERFIL TEXT)
+                """)
+        
+        conn.commit()
         return conn
     except Error as e:
         print("Error", {e})
         return None
     
-conn = conecta_db_banco()
-cursor = conn.cursor()
-cursor.execute("CREATE TABLE IF NOT EXISTS HORARIOS (data TEXT, hora_entrada TEXT, entra_almoco TEXT, saida_almoco TEXT, hora_saida TEXT, semana_prova INTEGER)")
-
-
 
 # Função para ler as entradas e saídas do arquivo, considerando a data
 def ler_arquivo():    
@@ -28,7 +51,7 @@ def ler_arquivo():
         return [], [], [], [], [], []
 
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM HORARIOS")
+    cursor.execute("SELECT DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS")
     registros = cursor.fetchall()
     conn.close()
 
@@ -242,8 +265,8 @@ def Banco_horas():
 
     # Função para calcular o banco de horas (quando for clicado)
     def calcular_banco():
-        datas, hora_entrada, entra_almoco, saida_almoco, hora_saida = ler_arquivo()
-        calcular_horas(hora_entrada, entra_almoco, saida_almoco, hora_saida, resultado_label)
+        datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
+        calcular_horas(hora_entrada, entra_almoco, saida_almoco, hora_saida, resultado_label, semana_prova)
 
     # Função para exibir o banco de horas em uma nova janela
     def exibir_banco():
