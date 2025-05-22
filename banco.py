@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import *
 from tkinter import messagebox
+from tkinter import ttk
 from datetime import datetime, timedelta
 import sqlite3
 from sqlite3 import Error
@@ -51,32 +52,34 @@ def ler_arquivo():
         return [], [], [], [], [], []
 
     cursor = conn.cursor()
-    cursor.execute("SELECT DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS")
+    cursor.execute("SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS")
     registros = cursor.fetchall()
     conn.close()
 
+    idhorario = []
     hora_entrada = []
     entra_almoco = []
     saida_almoco = []
     hora_saida = []
     datas = []
     semana_prova = []
+    
 
 
     for registro in registros:
 
-        data = datetime.strptime(registro[0], "%d/%m/%Y")
-
         # Adicionando data e horários à lista
+        idhorario.append(registro[0])
+        data = datetime.strptime(registro[1], "%d/%m/%Y")
         datas.append(data)
-        hora_entrada.append(datetime.strptime(registro[1],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-        entra_almoco.append(datetime.strptime(registro[2],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-        saida_almoco.append(datetime.strptime(registro[3],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-        hora_saida.append(datetime.strptime(registro[4],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        hora_entrada.append(datetime.strptime(registro[2],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        entra_almoco.append(datetime.strptime(registro[3],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        saida_almoco.append(datetime.strptime(registro[4],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
+        hora_saida.append(datetime.strptime(registro[5],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
         
-        semana_prova.append(registro[5]) #armazena 0 ou 1
+        semana_prova.append(registro[6]) #armazena 0 ou 1
 
-    return datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova
+    return idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova
 
 
 # Função para calcular o banco de horas
@@ -265,21 +268,14 @@ def Banco_horas():
 
     # Função para calcular o banco de horas (quando for clicado)
     def calcular_banco():
-        datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
+        _, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
         calcular_horas(hora_entrada, entra_almoco, saida_almoco, hora_saida, resultado_label, semana_prova)
 
     # Função para exibir o banco de horas em uma nova janela
     def exibir_banco():
         banco = tk.Toplevel(root)  # Cria uma nova janela (Toplevel)
         banco.title("Banco de Horas")
-        banco.geometry("500x500")
-        
-        meses = {
-        "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
-        "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
-        "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
-        }
-
+        banco.geometry("600x600")
 
         # Criando um Frame para conter a área de texto e a barra de rolagem
         frame = tk.Frame(banco)
@@ -289,38 +285,63 @@ def Banco_horas():
         scrollbar = tk.Scrollbar(frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Criando um widget Text para exibir o conteúdo
-        text_widget = tk.Text(frame, wrap="none", yscrollcommand=scrollbar.set, font=("Arial", 12))
-        text_widget.pack(fill=tk.BOTH, expand=True)
+        tree = ttk.Treeview(
+            frame, 
+            columns=("data", "entrada", "entrada_almoco", "saida_almoco", "saida", "semana_de_prova"), 
+            show="headings",
+            yscrollcommand=scrollbar.set
+        )
+        tree.pack(fill=tk.BOTH, expand=True)
 
-        # Configurando a barra de rolagem para rolar o conteúdo do widget Text
-        scrollbar.config(command=text_widget.yview)
+        meses = {
+        "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
+        "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
+        "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
+        }
+
+
+
+
+        # Definindo cabeçalhos da tabela
+        tree.heading("data", text="Data")
+        tree.heading("entrada", text="Entrada")
+        tree.heading("entrada_almoco", text="Almoço Início")
+        tree.heading("saida_almoco", text="Almoço Fim")
+        tree.heading("saida", text="Saída")
+        tree.heading("semana_de_prova", text="Semana de Prova")
+
+        tree.column("data", width=50, anchor="center")
+        tree.column("entrada", width=50, anchor="center")
+        tree.column("entrada_almoco", width=50, anchor="center")   
+        tree.column("saida_almoco", width=50, anchor="center")
+        tree.column("saida", width=50, anchor="center")
+        tree.column("semana_de_prova", width=50, anchor="center")
 
         # Lê os dados do arquivo
-        datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
-
-        mes_atual = None
+        idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
 
         # Exibindo o conteúdo do banco de horas
-        resultado = ""
-        for d, e, ea, sa, s, sp in zip(datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova):
-            mes = d.strftime('%m')
-            ano = d.strftime('%Y')
-            nome_mes = meses[mes]
-            mes = f"{nome_mes} de {ano}"
-
-            if mes_atual != (mes, ano):
-                mes_atual = (mes, ano)
-                resultado += f"\n{nome_mes} de {ano}\n"
-                
-            prefixo = " 🥺" if sp == '1' else " "
-
-            resultado += f"{d.strftime('%d/%m')} - Entrada: {e.strftime('%H:%M')} - Saída: {s.strftime('%H:%M')} - Almoco: {ea.strftime('%H:%M')} - {sa.strftime('%H:%M')}{prefixo}\n"
+        for id, d, e, ea, sa, s, sp in zip(idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova):
+            tree.insert("", tk.END, values=(
+            d.strftime("%d/%m/%Y"),
+            e.strftime("%H:%M"),
+            ea.strftime("%H:%M"),
+            sa.strftime("%H:%M"),
+            s.strftime("%H:%M"),
+            "✅" if sp == '1' else "❌"
+        ))
+            
+        def editar_banco():
+            conn = sqlite3.connect("banco_database.db")
+            cursor = conn.cursor()
+         
+            conn.commit()
+            conn.close()
 
         # Inserindo o resultado no widget Text
-        text_widget.insert(tk.END, resultado)
-        text_widget.config(state=tk.DISABLED)  # Impede edição do conteúdo
-
+        #text_widget.insert(tk.END, resultado)
+        #text_widget.config(state=tk.DISABLED)  # Impede edição do conteúdo
+  
 
     # Botão para adicionar a entrada
     frame_linha3 = tk.Frame(root)
