@@ -6,55 +6,14 @@ from datetime import datetime, timedelta
 import sqlite3
 from sqlite3 import Error
 
+from db_manager import DatabaseManager
 
-def conecta_db_banco():
-    conn = None
-    try:
-        conn = sqlite3.connect("banco_database.db")
-        cursor = conn.cursor()
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS HORARIOS (
-                IDHORARIO INTEGER PRIMARY KEY AUTOINCREMENT, 
-                DATA TEXT, HORA_ENTRADA TEXT, 
-                ENTRA_ALMOCO TEXT, 
-                SAIDA_ALMOCO TEXT,
-                HORA_SAIDA TEXT,
-                SEMANA_PROVA BLOB, 
-                CODUSUARIO TEXT)""")
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS PERFIL (
-                IDPERFIL INTEGER PRIMARY KEY AUTOINCREMENT, 
-                CODPERFIL TEXT)
-                """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS USUARIO (
-                CODUSUARIO TEXT PRIMARY KEY, 
-                NOME TEXT,
-                EMAIL TEXT,
-                SENHA TEXT,
-                CODPERFIL TEXT)
-                """)
-        
-        conn.commit()
-        return conn
-    except Error as e:
-        print("Error", {e})
-        return None
-    
+db_manager = DatabaseManager()
 
 # Função para ler as entradas e saídas do arquivo, considerando a data
 def ler_arquivo():    
-    conn = conecta_db_banco()
-    if not conn:
-        return [], [], [], [], [], []
-
-    cursor = conn.cursor()
-    cursor.execute("SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS")
-    registros = cursor.fetchall()
-    conn.close()
+    registros = db_manager.get_all_horarios()
 
     idhorario = []
     hora_entrada = []
@@ -208,12 +167,13 @@ def Banco_horas():
     linha_frame2 = tk.Frame(root)
     linha_frame2.pack(pady=10)
 
+
     # Função para adicionar uma nova linha no arquivo (só chamada quando o botão for clicado)
     def adicionar_horas():
 
         data = data_entry.get() + '/' + ano_entry.get()
-        db_data, *_ = ler_arquivo()
-        data_banco = [d.strftime("%d/%m/%Y") for d in db_data]
+        horarios_existentes = db_manager.get_all_horarios()
+        data_banco = [h[1] for h in horarios_existentes]
 
         # Verifica se a data está no formato correto
         try:
@@ -241,18 +201,12 @@ def Banco_horas():
             messagebox.showerror("Erro", str(e))
             return   
     
-
         sp = sprova.get() #Pega o valor da checkbox
-        conn = conecta_db_banco()
-        if conn:
-            try:
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO HORARIOS (data, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova) VALUES (?,?,?,?,?,?)", (data, entrada, e_almoco, s_almoco, saida, sp))
-                conn.commit()
-            except Error as e:
-                print(f"Erro ao inserir no banco: {e}")
-            finally:
-                conn.close()
+
+        if db_manager.insert_horario(data, entrada, e_almoco, s_almoco, saida, sp):
+            messagebox.showinfo("Sucesso", "Horário adicionado com sucesso!")
+        else:
+            messagebox.showerror("Erro", "Não foi possível adicionar o horário.")
 
         # Limpar os campos após a adição
         data_entry.delete(0, tk.END)
@@ -260,6 +214,9 @@ def Banco_horas():
         e_almoco_entry.delete(0, tk.END)
         s_almoco_entry.delete(0, tk.END)  
         saida_entry.delete(0, tk.END)
+        data_var.set(datetime.now().strftime("%d/%m")) # Reseta para a data atual
+        compensa.set(0) # Desmarca o checkbox
+        sprova.set(0) # Desmarca o checkbox
 
     tk.Button(linha_frame2, text="Enviar", command=adicionar_horas).grid(row=0, column=0, padx=(350, 10))
     Checkbutton(linha_frame2, text='Horas a Compensar?', variable=compensa, onvalue=1, offvalue=0, command=compensar_horas).grid(row=0, column=1, sticky='w', padx=(200,0))
@@ -275,7 +232,11 @@ def Banco_horas():
     def exibir_banco():
         banco = tk.Toplevel(root)  # Cria uma nova janela (Toplevel)
         banco.title("Banco de Horas")
-        banco.geometry("600x600")
+        banco.geometry("650x600")
+
+        # Criando uma NAV 
+        nav = tk.Frame(banco)
+        nav.pack(fill=tk.X)
 
         # Criando um Frame para conter a área de texto e a barra de rolagem
         frame = tk.Frame(banco)
@@ -287,22 +248,14 @@ def Banco_horas():
 
         tree = ttk.Treeview(
             frame, 
-            columns=("data", "entrada", "entrada_almoco", "saida_almoco", "saida", "semana_de_prova"), 
+            columns=("id", "data", "entrada", "entrada_almoco", "saida_almoco", "saida", "semana_de_prova"), 
             show="headings",
             yscrollcommand=scrollbar.set
         )
         tree.pack(fill=tk.BOTH, expand=True)
 
-        meses = {
-        "01": "Janeiro", "02": "Fevereiro", "03": "Março", "04": "Abril",
-        "05": "Maio", "06": "Junho", "07": "Julho", "08": "Agosto",
-        "09": "Setembro", "10": "Outubro", "11": "Novembro", "12": "Dezembro"
-        }
-
-
-
-
         # Definindo cabeçalhos da tabela
+        tree.heading("id", text="ID")
         tree.heading("data", text="Data")
         tree.heading("entrada", text="Entrada")
         tree.heading("entrada_almoco", text="Almoço Início")
@@ -310,6 +263,7 @@ def Banco_horas():
         tree.heading("saida", text="Saída")
         tree.heading("semana_de_prova", text="Semana de Prova")
 
+        tree.column("id", width=50, anchor="center")
         tree.column("data", width=50, anchor="center")
         tree.column("entrada", width=50, anchor="center")
         tree.column("entrada_almoco", width=50, anchor="center")   
@@ -323,6 +277,7 @@ def Banco_horas():
         # Exibindo o conteúdo do banco de horas
         for id, d, e, ea, sa, s, sp in zip(idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova):
             tree.insert("", tk.END, values=(
+            id,
             d.strftime("%d/%m/%Y"),
             e.strftime("%H:%M"),
             ea.strftime("%H:%M"),
@@ -331,18 +286,110 @@ def Banco_horas():
             "✅" if sp == '1' else "❌"
         ))
             
-        def editar_banco():
+
+        def on_tree_select(event):
+            selected_items = tree.selection() # Obtem os itens selecionados
+            if selected_items:
+                item = selected_items[0] # Pega o primeiro valor
+                values = tree.item(item, "values") # Obtem os valores da linha
+                id_selected = values[0]
+                print(f"ID selecionado: {id_selected}")
+        tree.bind("<<TreeviewSelect>>", on_tree_select) # Vincula o evento de seleção ao Treeview
+        scrollbar.config(command=tree.yview) # Vincula a barra de rolagem ao Treeview
+
+
+        def editar(id_selected):
+            editar_janela = tk.Toplevel(banco)  # Cria uma nova janela (Toplevel)
+            editar_janela.title("Editar Banco de Horas")
+            editar_janela.geometry("550x250")
+
+            frame_data = tk.Frame(editar_janela)
+            frame_data.pack(pady=5)
+
+            # Usar frame_data como contêiner para os elementos com grid
+            entrada_label = tk.Label(frame_data, text="Hora de Entrada (HH:MM):", font=("Arial", 12), )
+            entrada_label.grid(row=0, column=0, padx=15, pady=5)
+            entrada_entry = tk.Entry(frame_data, width=10, font=("Arial", 16), justify="center")
+            entrada_entry.grid(row=1, column=0, pady=5, padx=15)
+
+            e_almoco_label = tk.Label(frame_data, text="Entrada de Almoço (HH:MM):", font=("Arial", 12))
+            e_almoco_label.grid(row=0, column=1, padx=15, pady=5)
+            e_almoco_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
+            e_almoco_entry.grid(row=1, column=1, padx=15)
+
+            saida_label = tk.Label(frame_data, text="Hora de Saída (HH:MM):", font=("Arial", 12))
+            saida_label.grid(row=2, column=0, padx=15, pady=5)
+            saida_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
+            saida_entry.grid(row=3, column=0, padx=15, pady=(0, 80))
+
+            s_almoco_label = tk.Label(frame_data, text="Saída de Almoço (HH:MM):", font=("Arial", 12))
+            s_almoco_label.grid(row=2, column=1, padx=15, pady=5)
+            s_almoco_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
+            s_almoco_entry.grid(row=3, column=1, padx=15, pady=(0, 80))
+
+
+            def enviar_edicao():
+                novos_valores = {
+                "entrada": entrada_entry.get() or None,
+                "entrada_almoco": e_almoco_entry.get() or None,
+                "saida": saida_entry.get() or None,
+                "saida_almoco": s_almoco_entry.get() or None,
+                "semana_prova": None  # ajuste se for editar isso também
+                }
+                editar_banco(id_selected, novos_valores)
+                editar_janela.destroy()
+
+            # Frame para o botão na parte inferior
+            frame_botao = tk.Frame(editar_janela)
+            frame_botao.pack(side=tk.BOTTOM, pady=2)
+
+            tk.Button(frame_botao, text="Enviar", font=("Arial", 10), width=15, command=enviar_edicao).pack()
+
+        def editar_banco(id_selected, novos_valores):
+            campos_atualizados = {
+            "HORA_ENTRADA": novos_valores.get("entrada"),
+            "ENTRA_ALMOCO": novos_valores.get("entrada_almoco"),
+            "SAIDA_ALMOCO": novos_valores.get("saida_almoco"),
+            "HORA_SAIDA": novos_valores.get("saida"),
+            "SEMANA_PROVA": novos_valores.get("semana_prova")
+    }
+            
+        
+            campos_validos = {campo: valor for campo, valor in campos_atualizados.items() if valor is not None}
+
+            if not campos_validos:
+                return  # Nada para atualizar
+            
+            set_clause = ", ".join([f"{campo} = ?" for campo in campos_validos.keys()])
+            valores = list(campos_validos.values())
+
             conn = sqlite3.connect("banco_database.db")
             cursor = conn.cursor()
-         
+
+            print(set_clause)
+
+            cursor.execute(f"""
+                UPDATE HORARIOS 
+                SET {set_clause}
+                WHERE IDHORARIO = ?
+                """, (*valores, id_selected))
+
             conn.commit()
-            conn.close()
+            conn.close()   
+            
+    
+        def chamar_edicao():
+            selected_items = tree.selection()
+            if selected_items:
+                item = selected_items[0]
+                values = tree.item(item, "values")
+                id_selected = values[0]
+                editar(id_selected)
+            else:
+                messagebox.showwarning("Atenção", "Selecione uma linha para editar.")
 
-        # Inserindo o resultado no widget Text
-        #text_widget.insert(tk.END, resultado)
-        #text_widget.config(state=tk.DISABLED)  # Impede edição do conteúdo
-  
-
+        tk.Button(nav, text="Editar", command=chamar_edicao, borderwidth=0).pack(side=tk.LEFT, padx=10)
+    
     # Botão para adicionar a entrada
     frame_linha3 = tk.Frame(root)
     frame_linha3.pack(pady=(200,0))
