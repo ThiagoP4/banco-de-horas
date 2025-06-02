@@ -7,77 +7,9 @@ import sqlite3
 from sqlite3 import Error
 
 from db_manager import DatabaseManager
-
+from calculadora_horas import calcular_horas, ler_arquivo
 
 db_manager = DatabaseManager()
-
-# Função para ler as entradas e saídas do arquivo, considerando a data
-def ler_arquivo():    
-    registros = db_manager.get_all_horarios()
-
-    idhorario = []
-    hora_entrada = []
-    entra_almoco = []
-    saida_almoco = []
-    hora_saida = []
-    datas = []
-    semana_prova = []
-    
-
-
-    for registro in registros:
-
-        # Adicionando data e horários à lista
-        idhorario.append(registro[0])
-        data = datetime.strptime(registro[1], "%d/%m/%Y")
-        datas.append(data)
-        hora_entrada.append(datetime.strptime(registro[2],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-        entra_almoco.append(datetime.strptime(registro[3],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-        saida_almoco.append(datetime.strptime(registro[4],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-        hora_saida.append(datetime.strptime(registro[5],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
-        
-        semana_prova.append(registro[6]) #armazena 0 ou 1
-
-    return idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova
-
-
-# Função para calcular o banco de horas
-def calcular_horas(horas_entrada, entra_almoco, saida_almoco, horas_saida, resultado_label, semana_prova):
-    carga_horaria_normal = timedelta(hours=8)
-    banco = timedelta(0)
-    
-    for entrada, e_almoco, s_almoco, saida, sp in zip(horas_entrada, entra_almoco, saida_almoco, horas_saida, semana_prova):
-        
-        # Verifica se os campos de almoço estão vazios ou são "00:00"
-        if e_almoco.time() == datetime.strptime("00:00", "%H:%M").time() and s_almoco.time() == datetime.strptime("00:00", "%H:%M").time():
-            diferenca = saida - entrada  # Ignora almoço
-        else:
-            diferenca = (saida - entrada) - (s_almoco - e_almoco)  # Cálculo normal
-
-        carga_horaria = carga_horaria_normal / 2 if int(sp) == 1 else carga_horaria_normal
-
-        if diferenca < carga_horaria:
-            falta = carga_horaria - diferenca
-            banco -= falta
-            print(f'falta: {falta}')
-        else:
-            sobrando = diferenca - carga_horaria
-            banco += sobrando
-            print(f'sobrando: {sobrando}')
-
-    # Converter o banco de horas para horas e minutos corretamente
-    total_segundos = abs(banco.total_seconds())  # Pega o valor absoluto para evitar dias negativos
-    horas_banco = int(total_segundos // 3600)  # Extrai as horas
-    minutos_banco = int((total_segundos % 3600) // 60)  # Extrai os minutos
-
-    sinal = '-' if banco < timedelta(0) else '+'
-
-    # Formatando a exibição corretamente
-    resultado = f'{sinal} {horas_banco:02}:{minutos_banco:02}'
-
-    # Atualiza o texto no label com o resultado formatado
-    resultado_label.config(text=f'Banco de Horas: {resultado}')
-
 
 # Função para a interface gráfica
 def Banco_horas():
@@ -225,8 +157,15 @@ def Banco_horas():
 
     # Função para calcular o banco de horas (quando for clicado)
     def calcular_banco():
-        _, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
-        calcular_horas(hora_entrada, entra_almoco, saida_almoco, hora_saida, resultado_label, semana_prova)
+        _, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo(db_manager)
+
+        if not datas: # Se a lista de datas estiver vazia, não há o que calcular
+            resultado_label.config(text="Banco de Horas: (sem dados)")
+            return
+        
+        saldo = calcular_horas(hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova)
+
+        resultado_label.config(text=f'Banco de Horas: {saldo}')
 
     # Função para exibir o banco de horas em uma nova janela
     def exibir_banco():
@@ -279,46 +218,26 @@ def Banco_horas():
             for i in tree_widget.get_children():
                 tree_widget.delete(i)
             
-            # 2. Lê os dados do arquivo (ou banco de dados)
-            # As variáveis idhorario, datas, etc., são locais para esta chamada de ler_arquivo()
-            id_list, dt_list, he_list, eal_list, sal_list, hs_list, sp_list = ler_arquivo()
+            idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo(db_manager)
 
             # 3. Exibe o conteúdo na treeview
-            for id_val, d_val, e_val, ea_val, sa_val, s_val, sp_val in zip(id_list, dt_list, he_list, eal_list, sal_list, hs_list, sp_list):
+            for id_val, data_val, entra_val, entra_almoco_val, saida_almoco_val, saida_val, sp_val in zip(idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova):
                 tree_widget.insert("", tk.END, values=(
                     id_val,
-                    d_val.strftime("%d/%m/%Y"),
-                    e_val.strftime("%H:%M"),
-                    ea_val.strftime("%H:%M"),
-                    sa_val.strftime("%H:%M"),
-                    s_val.strftime("%H:%M"),
+                    data_val.strftime("%d/%m/%Y"),
+                    entra_val.strftime("%H:%M"),
+                    entra_almoco_val.strftime("%H:%M"),
+                    saida_almoco_val.strftime("%H:%M"),
+                    saida_val.strftime("%H:%M"),
                     # e texto melhorado para clareza. Seu original: "✅" if sp == '1' else "❌"
                     "✅ Sim" if sp_val == 1 else "❌ Não" 
                 ))
         
-        # Chama a função para popular a treeview.
-        # O loop for que você tinha aqui antes desta chamada foi removido
-        # porque _popular_treeview_interno já faz o trabalho.
         _popular_treeview_interno(tree)
         scrollbar.config(command=tree.yview)
         
         # Lê os dados do arquivo
-        idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
-
-        # Exibindo o conteúdo do banco de horas
-        for id, d, e, ea, sa, s, sp in zip(idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova):
-            tree.insert("", tk.END, values=(
-            id,
-            d.strftime("%d/%m/%Y"),
-            e.strftime("%H:%M"),
-            ea.strftime("%H:%M"),
-            sa.strftime("%H:%M"),
-            s.strftime("%H:%M"),
-            "✅" if sp == '1' else "❌"
-        ))
-            
-        _popular_treeview_interno(tree)
-
+        
 
         def editar(id_selected):
             dados_atuais = db_manager.get_horario_id(id_selected)
