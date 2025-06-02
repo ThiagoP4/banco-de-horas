@@ -233,6 +233,8 @@ def Banco_horas():
         banco = tk.Toplevel(root)  # Cria uma nova janela (Toplevel)
         banco.title("Banco de Horas")
         banco.geometry("650x600")
+        banco.transient(root)
+        banco.grab_set()
 
         # Criando uma NAV 
         nav = tk.Frame(banco)
@@ -271,6 +273,35 @@ def Banco_horas():
         tree.column("saida", width=50, anchor="center")
         tree.column("semana_de_prova", width=50, anchor="center")
 
+        # Função interna para popular a treeview (para reutilização)
+        def _popular_treeview_interno(tree_widget):
+            # 1. Limpa a treeview antes de popular
+            for i in tree_widget.get_children():
+                tree_widget.delete(i)
+            
+            # 2. Lê os dados do arquivo (ou banco de dados)
+            # As variáveis idhorario, datas, etc., são locais para esta chamada de ler_arquivo()
+            id_list, dt_list, he_list, eal_list, sal_list, hs_list, sp_list = ler_arquivo()
+
+            # 3. Exibe o conteúdo na treeview
+            for id_val, d_val, e_val, ea_val, sa_val, s_val, sp_val in zip(id_list, dt_list, he_list, eal_list, sal_list, hs_list, sp_list):
+                tree_widget.insert("", tk.END, values=(
+                    id_val,
+                    d_val.strftime("%d/%m/%Y"),
+                    e_val.strftime("%H:%M"),
+                    ea_val.strftime("%H:%M"),
+                    sa_val.strftime("%H:%M"),
+                    s_val.strftime("%H:%M"),
+                    # e texto melhorado para clareza. Seu original: "✅" if sp == '1' else "❌"
+                    "✅ Sim" if sp_val == 1 else "❌ Não" 
+                ))
+        
+        # Chama a função para popular a treeview.
+        # O loop for que você tinha aqui antes desta chamada foi removido
+        # porque _popular_treeview_interno já faz o trabalho.
+        _popular_treeview_interno(tree)
+        scrollbar.config(command=tree.yview)
+        
         # Lê os dados do arquivo
         idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova = ler_arquivo()
 
@@ -286,109 +317,177 @@ def Banco_horas():
             "✅" if sp == '1' else "❌"
         ))
             
-
-        def on_tree_select(event):
-            selected_items = tree.selection() # Obtem os itens selecionados
-            if selected_items:
-                item = selected_items[0] # Pega o primeiro valor
-                values = tree.item(item, "values") # Obtem os valores da linha
-                id_selected = values[0]
-                print(f"ID selecionado: {id_selected}")
-        tree.bind("<<TreeviewSelect>>", on_tree_select) # Vincula o evento de seleção ao Treeview
-        scrollbar.config(command=tree.yview) # Vincula a barra de rolagem ao Treeview
+        _popular_treeview_interno(tree)
 
 
         def editar(id_selected):
+            dados_atuais = db_manager.get_horario_id(id_selected)
+            if not dados_atuais:
+                messagebox.showerror("Erro", "Não foi possível carregar os dados para edição.", parent=banco)
+                return
+            
+            id_db, data_db_str, he_db_str, eal_db_str, sal_db_str, hs_db_str, sp_db_int = dados_atuais
+            sp_db_int = int(sp_db_int) if sp_db_int is not None else 0 # Garante que é int
+
             editar_janela = tk.Toplevel(banco)  # Cria uma nova janela (Toplevel)
-            editar_janela.title("Editar Banco de Horas")
+            editar_janela.title(f"Editar ID: {id_db} - Data: {data_db_str}")
             editar_janela.geometry("550x250")
+            editar_janela.transient(banco)
+            editar_janela.grab_set()
 
             frame_data = tk.Frame(editar_janela)
-            frame_data.pack(pady=5)
+            frame_data.pack(pady=15, padx=10)
 
             # Usar frame_data como contêiner para os elementos com grid
-            entrada_label = tk.Label(frame_data, text="Hora de Entrada (HH:MM):", font=("Arial", 12), )
-            entrada_label.grid(row=0, column=0, padx=15, pady=5)
-            entrada_entry = tk.Entry(frame_data, width=10, font=("Arial", 16), justify="center")
-            entrada_entry.grid(row=1, column=0, pady=5, padx=15)
+            tk.Label(frame_data, text="Hora de Entrada (HH:MM):", font=("Arial", 12)).grid(row=0, column=0, padx=5, pady=5, sticky="e")
+            entrada_entry_edit = tk.Entry(frame_data, width=10, font=("Arial", 14), justify="center")
+            entrada_entry_edit.grid(row=0, column=1, padx=5, pady=5)
+            entrada_entry_edit.insert(0, he_db_str)
 
-            e_almoco_label = tk.Label(frame_data, text="Entrada de Almoço (HH:MM):", font=("Arial", 12))
-            e_almoco_label.grid(row=0, column=1, padx=15, pady=5)
-            e_almoco_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
-            e_almoco_entry.grid(row=1, column=1, padx=15)
+            # Entrada Almoço
+            tk.Label(frame_data, text="Entrada Almoço (HH:MM):", font=("Arial", 12)).grid(row=1, column=0, padx=5, pady=5, sticky="e")
+            e_almoco_entry_edit = tk.Entry(frame_data, width=10, font=("Arial", 14), justify="center")
+            e_almoco_entry_edit.grid(row=1, column=1, padx=5, pady=5)
+            e_almoco_entry_edit.insert(0, eal_db_str)
 
-            saida_label = tk.Label(frame_data, text="Hora de Saída (HH:MM):", font=("Arial", 12))
-            saida_label.grid(row=2, column=0, padx=15, pady=5)
-            saida_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
-            saida_entry.grid(row=3, column=0, padx=15, pady=(0, 80))
+            # Saída Almoço
+            tk.Label(frame_data, text="Saída Almoço (HH:MM):", font=("Arial", 12)).grid(row=2, column=0, padx=5, pady=5, sticky="e")
+            s_almoco_entry_edit = tk.Entry(frame_data, width=10, font=("Arial", 14), justify="center")
+            s_almoco_entry_edit.grid(row=2, column=1, padx=5, pady=5)
+            s_almoco_entry_edit.insert(0, sal_db_str)
 
-            s_almoco_label = tk.Label(frame_data, text="Saída de Almoço (HH:MM):", font=("Arial", 12))
-            s_almoco_label.grid(row=2, column=1, padx=15, pady=5)
-            s_almoco_entry = tk.Entry(frame_data, width=12, font=("Arial", 16), justify="center")
-            s_almoco_entry.grid(row=3, column=1, padx=15, pady=(0, 80))
+            # Hora de Saída
+            tk.Label(frame_data, text="Hora de Saída (HH:MM):", font=("Arial", 12)).grid(row=3, column=0, padx=5, pady=5, sticky="e")
+            saida_entry_edit = tk.Entry(frame_data, width=10, font=("Arial", 14), justify="center")
+            saida_entry_edit.grid(row=3, column=1, padx=5, pady=5)
+            saida_entry_edit.insert(0, hs_db_str)
+            
+            # Checkbutton para Semana de Prova
+            sprova_edit_var = tk.IntVar(value=sp_db_int)
+            tk.Label(frame_data, text="Semana de Prova:", font=("Arial", 12)).grid(row=4, column=0, padx=5, pady=8, sticky="e")
+            check_sprova_edit = tk.Checkbutton(frame_data, variable=sprova_edit_var, onvalue=1, offvalue=0)
+            check_sprova_edit.grid(row=4, column=1, padx=5, pady=8, sticky="w")
 
 
             def enviar_edicao():
-                novos_valores = {
-                "entrada": entrada_entry.get() or None,
-                "entrada_almoco": e_almoco_entry.get() or None,
-                "saida": saida_entry.get() or None,
-                "saida_almoco": s_almoco_entry.get() or None,
-                "semana_prova": None  # ajuste se for editar isso também
-                }
-                editar_banco(id_selected, novos_valores)
-                editar_janela.destroy()
+                novos_valores = {}
+                novo_he_str = entrada_entry_edit.get().strip()
+                novo_eal_str = e_almoco_entry_edit.get().strip()
+                novo_sal_str = s_almoco_entry_edit.get().strip()
+                novo_hs_str = saida_entry_edit.get().strip()
+                novo_sp_int = sprova_edit_var.get()
 
-            # Frame para o botão na parte inferior
-            frame_botao = tk.Frame(editar_janela)
-            frame_botao.pack(side=tk.BOTTOM, pady=2)
+                try:
+                    # HORA_ENTRADA
+                    if novo_he_str: # Se não estiver vazio
+                        datetime.strptime(novo_he_str, "%H:%M") # Valida formato
+                        if novo_he_str != he_db_str: # Se mudou
+                            novos_valores["HORA_ENTRADA"] = novo_he_str
+                    else: # Não pode ser vazio
+                        messagebox.showerror("Erro de Validação", "Hora de Entrada não pode ser vazia.", parent=editar_janela)
+                        return
+                    
+                    # ENTRA_ALMOCO
+                    if novo_eal_str: # Se não estiver vazio
+                        datetime.strptime(novo_eal_str, "%H:%M")
+                        if novo_eal_str != eal_db_str:
+                            novos_valores["ENTRA_ALMOCO"] = novo_eal_str
+                    elif eal_db_str and eal_db_str != "00:00": # Se estava preenchido e foi apagado, define como "00:00"
+                        novos_valores["ENTRA_ALMOCO"] = "00:00"
+                    
+                    # SAIDA_ALMOCO
+                    if novo_sal_str:
+                        datetime.strptime(novo_sal_str, "%H:%M")
+                        if novo_sal_str != sal_db_str:
+                            novos_valores["SAIDA_ALMOCO"] = novo_sal_str
+                    elif sal_db_str and sal_db_str != "00:00":
+                         novos_valores["SAIDA_ALMOCO"] = "00:00"
 
-            tk.Button(frame_botao, text="Enviar", font=("Arial", 10), width=15, command=enviar_edicao).pack()
+                    # HORA_SAIDA
+                    if novo_hs_str:
+                        datetime.strptime(novo_hs_str, "%H:%M")
+                        if novo_hs_str != hs_db_str:
+                            novos_valores["HORA_SAIDA"] = novo_hs_str
+                    else:
+                        messagebox.showerror("Erro de Validação", "Hora de Saída não pode ser vazia.", parent=editar_janela)
+                        return
+                        
+                    # SEMANA_PROVA
+                    if novo_sp_int != sp_db_int:
+                        novos_valores["SEMANA_PROVA"] = novo_sp_int
 
-        def editar_banco(id_selected, novos_valores):
-            campos_atualizados = {
-            "HORA_ENTRADA": novos_valores.get("entrada"),
-            "ENTRA_ALMOCO": novos_valores.get("entrada_almoco"),
-            "SAIDA_ALMOCO": novos_valores.get("saida_almoco"),
-            "HORA_SAIDA": novos_valores.get("saida"),
-            "SEMANA_PROVA": novos_valores.get("semana_prova")
-    }
+                except ValueError:
+                    messagebox.showerror("Erro de Formato", "Formato de hora inválido. Use HH:MM.", parent=editar_janela)
+                    return
+
+                if not novos_valores:
+                    messagebox.showinfo("Sem Alterações", "Nenhuma alteração foi detectada.", parent=editar_janela)
+                    return 
+
+                # id_db é o ID original do registro sendo editado
+                if db_manager.update_horario(id_db, novos_valores):
+                    messagebox.showinfo("Sucesso", "Registro atualizado com sucesso!", parent=banco)
+                    editar_janela.destroy()
+                    _popular_treeview_interno(tree) # Atualiza a treeview
+                    calcular_banco() # Recalcula o banco de horas na tela principal
+                else:
+                    messagebox.showerror("Erro", "Não foi possível atualizar o registro.", parent=editar_janela)
+
+            # Frame para o botão na parte inferior (mantendo sua estrutura)
+            frame_botao_edicao = tk.Frame(editar_janela) # Renomeado para clareza
+            frame_botao_edicao.pack(side=tk.BOTTOM, pady=10) # pady aumentado
+            tk.Button(frame_botao_edicao, text="Salvar Alterações", font=("Arial", 10, "bold"), width=18, command=enviar_edicao).pack()
             
-        
-            campos_validos = {campo: valor for campo, valor in campos_atualizados.items() if valor is not None}
+            editar_janela.wait_window()
 
-            if not campos_validos:
-                return  # Nada para atualizar
-            
-            set_clause = ", ".join([f"{campo} = ?" for campo in campos_validos.keys()])
-            valores = list(campos_validos.values())
 
-            conn = sqlite3.connect("banco_database.db")
-            cursor = conn.cursor()
-
-            print(set_clause)
-
-            cursor.execute(f"""
-                UPDATE HORARIOS 
-                SET {set_clause}
-                WHERE IDHORARIO = ?
-                """, (*valores, id_selected))
-
-            conn.commit()
-            conn.close()   
-            
-    
         def chamar_edicao():
-            selected_items = tree.selection()
-            if selected_items:
-                item = selected_items[0]
-                values = tree.item(item, "values")
-                id_selected = values[0]
-                editar(id_selected)
-            else:
-                messagebox.showwarning("Atenção", "Selecione uma linha para editar.")
+            selected_items_tree = tree.selection() # Nome da variável alterado
+            if not selected_items_tree:
+                messagebox.showwarning("Atenção", "Selecione uma linha para editar.", parent=banco)
+                return
+            
+            item_iid = selected_items_tree[0]
+            values_from_tree = tree.item(item_iid, "values")
+            try:
+                # O ID é o primeiro valor na tupla 'values' da Treeview
+                id_editar = int(values_from_tree[0]) 
+                editar(id_editar) # Chama a função 'editar' principal (agora 'editar_selecionado')
+            except (IndexError, ValueError):
+                messagebox.showerror("Erro", "Não foi possível obter o ID da linha selecionada.", parent=banco)
 
-        tk.Button(nav, text="Editar", command=chamar_edicao, borderwidth=0).pack(side=tk.LEFT, padx=10)
+
+        def deleta_selecionado(): # Renamed to avoid confusion with the original flawed one
+            selected_items_tree = tree.selection()
+            if not selected_items_tree:
+                messagebox.showwarning("Atenção", "Selecione uma linha para deletar.", parent=banco)
+                return
+
+            item_iid = selected_items_tree[0]
+            values_from_tree = tree.item(item_iid, "values")
+            try:
+                id_to_delete = int(values_from_tree[0])
+            except (IndexError, ValueError):
+                messagebox.showerror("Erro", "Não foi possível obter o ID da linha selecionada.", parent=banco)
+                return
+
+            # Add a confirmation dialog
+            confirm = messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja deletar o registro ID: {id_to_delete}?", parent=banco)
+            if not confirm:
+                return
+
+            if db_manager.delete_horario(id_to_delete): # Use id_to_delete
+                messagebox.showinfo("Sucesso", "Registro deletado com sucesso!", parent=banco)
+                _popular_treeview_interno(tree) # Atualiza a treeview
+                calcular_banco() # Recalcula o banco de horas na tela principal
+            else:
+                messagebox.showerror("Erro", "Não foi possível deletar o registro.", parent=banco) # Changed message
+
+
+        # Botão Editar na NAV da janela de exibir_banco
+        tk.Button(nav, text="Editar", command=chamar_edicao, borderwidth=0, font=("Arial", 10, "bold"), relief=tk.FLAT).pack(side=tk.LEFT, padx=10, pady=5)
+        tk.Button(nav, text="Deletar", command=deleta_selecionado, borderwidth=0, font=("Arial", 10, "bold"), relief=tk.FLAT).pack(side=tk.LEFT, padx=10, pady=5)
+        banco.wait_window() 
     
     # Botão para adicionar a entrada
     frame_linha3 = tk.Frame(root)

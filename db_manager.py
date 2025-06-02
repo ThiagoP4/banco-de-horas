@@ -86,7 +86,7 @@ class DatabaseManager:
         if conn:
             try:
                 cursor = conn.cursor()
-                cursor.execute("SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS ORDER BY IDHORARIO")
+                cursor.execute("SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS ORDER BY substr(DATA, 7, 4), substr(DATA, 4, 2), substr(DATA, 1, 2)")
                 return cursor.fetchall()
             except Error as e:
                 print(f"Erro ao buscar horários: {e}")
@@ -95,9 +95,27 @@ class DatabaseManager:
             finally:
                 conn.close()
 
+    def get_horario_id(self, idhorario):
+        conn = self.connect()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS WHERE IDHORARIO = ?", (idhorario,))
+                return cursor.fetchone() # Retorna uma única tupla ou None
+            except Error as e:
+                print(f"Erro ao buscar horário por ID: {e}")
+                messagebox.showerror("Erro de Leitura", f"Falha ao recuperar registro por ID: {e}")
+                return None
+            finally:
+                conn.close()
+        return None
+
     def update_horario(self, idhorario, updates):
         """Atualiza um registro de horário existente."""
         conn = self.connect()
+        if not updates: 
+            return True # Ou False, dependendo do comportamento desejado para nenhuma operação
+
         if conn:
             try:
                 cursor = conn.cursor()
