@@ -86,7 +86,7 @@ class DatabaseManager:
         if conn:
             try:
                 cursor = conn.cursor()
-                cursor.execute("SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS ORDER BY substr(DATA, 7, 4), substr(DATA, 4, 2), substr(DATA, 1, 2)")
+                cursor.execute("SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS ORDER BY DATA")
                 return cursor.fetchall()
             except Error as e:
                 print(f"Erro ao buscar horários: {e}")
@@ -145,5 +145,24 @@ class DatabaseManager:
                 print(f"Erro ao deletar horário: {e}")
                 messagebox.showerror("Erro de Exclusão", f"Falha ao deletar registro: {e}")
                 return False
+            finally:
+                conn.close()
+
+
+    def filtro_horas(self, ant_data, prox_data):
+        conn = self.connect()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("""
+                               SELECT IDHORARIO, DATA, HORA_ENTRADA, ENTRA_ALMOCO, SAIDA_ALMOCO, HORA_SAIDA, SEMANA_PROVA FROM HORARIOS 
+                               WHERE DATA BETWEEN ? AND ?
+                               ORDER BY DATA
+                """, (ant_data, prox_data))
+                return cursor.fetchall()
+            except Error as e:
+                print(f"Erro ao buscar horários: {e}")
+                messagebox.showerror("Erro de Leitura", f"Falha ao recuperar registros: {e}")
+                return []
             finally:
                 conn.close()
