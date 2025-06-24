@@ -11,6 +11,10 @@ from calculadora_horas import calcular_horas, ler_arquivo
 
 db_manager = DatabaseManager()
 
+
+DATE_FORMAT_DISPLAY = "%d/%m/%Y"
+DATE_FORMAT_DB = "%Y-%m-%d"
+
 # Função para a interface gráfica
 def Banco_horas():
     root = tk.Tk()
@@ -103,17 +107,20 @@ def Banco_horas():
     # Função para adicionar uma nova linha no arquivo (só chamada quando o botão for clicado)
     def adicionar_horas():
 
-        data = data_entry.get() + '/' + ano_entry.get()
+        display = data_var.get() + '/' + ano_var.get()
+
+        try:
+            # Converte a string da tela em um objeto datetime (isso valida a data)
+            data_disp = datetime.strptime(display, DATE_FORMAT_DISPLAY)
+            # Converte o objeto para o formato do banco de dados (YYYY-MM-DD)
+            data_db = data_disp.strftime(DATE_FORMAT_DB)
+        except ValueError:
+            messagebox.showerror("Erro", f"Formato de data inválido. Use o formato {DATE_FORMAT_DISPLAY.replace('%d','dd').replace('%m','mm').replace('%Y','yyyy')}.")
+            return
+
         horarios_existentes = db_manager.get_all_horarios()
         data_banco = [h[1] for h in horarios_existentes]
 
-        # Verifica se a data está no formato correto
-        try:
-            datetime.strptime(data, "%d/%m/%Y")  # Verifica se a data está no formato dd/mm/aaaa
-        except ValueError as e:
-            messagebox.showerror("Erro", "Formato de data inválido. Use dd/mm.")
-            return
-        
 
         if compensa.get() == 1:
             entrada = "00:00"
@@ -127,7 +134,7 @@ def Banco_horas():
             saida = saida_entry.get()
 
         try:
-            if data in data_banco:  # Verifica se a data já existe
+            if data_db in data_banco:  # Verifica se a data já existe
                 raise ValueError("O ponto deste dia já foi cadastrado.")
         except ValueError as e:
             messagebox.showerror("Erro", str(e))
@@ -135,7 +142,7 @@ def Banco_horas():
     
         sp = sprova.get() #Pega o valor da checkbox
 
-        if db_manager.insert_horario(data, entrada, e_almoco, s_almoco, saida, sp):
+        if db_manager.insert_horario(data_db, entrada, e_almoco, s_almoco, saida, sp):
             messagebox.showinfo("Sucesso", "Horário adicionado com sucesso!")
         else:
             messagebox.showerror("Erro", "Não foi possível adicionar o horário.")
@@ -224,7 +231,7 @@ def Banco_horas():
             for id_val, data_val, entra_val, entra_almoco_val, saida_almoco_val, saida_val, sp_val in zip(idhorario, datas, hora_entrada, entra_almoco, saida_almoco, hora_saida, semana_prova):
                 tree_widget.insert("", tk.END, values=(
                     id_val,
-                    data_val.strftime("%d/%m/%Y"),
+                    data_val.strftime("%Y-%m-%d"),
                     entra_val.strftime("%H:%M"),
                     entra_almoco_val.strftime("%H:%M"),
                     saida_almoco_val.strftime("%H:%M"),
@@ -376,7 +383,7 @@ def Banco_horas():
                 messagebox.showerror("Erro", "Não foi possível obter o ID da linha selecionada.", parent=banco)
 
 
-        def deleta_selecionado(): # Renamed to avoid confusion with the original flawed one
+        def deleta_selecionado(): 
             selected_items_tree = tree.selection()
             if not selected_items_tree:
                 messagebox.showwarning("Atenção", "Selecione uma linha para deletar.", parent=banco)
@@ -403,9 +410,78 @@ def Banco_horas():
                 messagebox.showerror("Erro", "Não foi possível deletar o registro.", parent=banco) # Changed message
 
 
+        def filtro_data(dt_ini, dt_fim):
+            data_ant = dt_ini
+            data_prox = dt_fim
+
+            try:
+                data_ant_dt = datetime.strptime(data_ant, DATE_FORMAT_DISPLAY)
+                data_prox_dt = datetime.strptime(data_prox, DATE_FORMAT_DISPLAY)
+
+                # Converte para string no formato do DB para a consulta
+                data_ant_db = data_ant_dt.strftime(DATE_FORMAT_DB)
+                data_prox_db = data_prox_dt.strftime(DATE_FORMAT_DB)
+
+            except ValueError:
+                messagebox.showerror("Erro de Formato", f"Use o formato {DATE_FORMAT_DISPLAY.replace('%d','dd').replace('%m','mm').replace('%Y','yyyy')}.", parent=banco)
+                return
+
+            if data_ant_dt > data_prox_dt:
+                messagebox.showerror("Erro", "Data inicial maior que a final.", parent=banco)
+                return
+
+            dados_filtrados = db_manager.filtro_horas(data_ant_db, data_prox_db)
+
+            for i in tree.get_children():
+                tree.delete(i)
+
+            for row in dados_filtrados:
+
+                data_db_str = row[1]
+                data_display = datetime.strptime(data_db_str, DATE_FORMAT_DB).strftime(DATE_FORMAT_DISPLAY)
+      
+                # Pega o restante dos valores
+                id_val, _, entra_val, entra_almoco_val, saida_almoco_val, saida_val, sp_val = row
+                
+                tree.insert("", tk.END, values=(
+                    id_val, data_display, entra_val, entra_almoco_val, saida_almoco_val, saida_val,
+                    "✅ Sim" if sp_val == 1 else "❌ Não"
+                ))
+
+        
         # Botão Editar na NAV da janela de exibir_banco
         tk.Button(nav, text="Editar", command=chamar_edicao, borderwidth=0, font=("Arial", 10, "bold"), relief=tk.FLAT).pack(side=tk.LEFT, padx=10, pady=5)
         tk.Button(nav, text="Deletar", command=deleta_selecionado, borderwidth=0, font=("Arial", 10, "bold"), relief=tk.FLAT).pack(side=tk.LEFT, padx=10, pady=5)
+        def aplicar_filtro(botao):
+            ini_label = tk.Label(nav, text="De:", font=("Arial", 10))
+            ini_label.pack(side=tk.LEFT, padx=(20, 5))
+
+            data_ini_entry = tk.Entry(nav, width=10, font=("Arial", 10), justify="center")
+            data_ini_entry.pack(side=tk.LEFT)
+
+            ate_label = tk.Label(nav, text="Até:", font=("Arial", 10))
+            ate_label.pack(side=tk.LEFT, padx=(10, 5))
+
+            data_fim_entry = tk.Entry(nav, width=10, font=("Arial", 10), justify="center")
+            data_fim_entry.pack(side=tk.LEFT)
+            def send_data():
+                if data_ini_entry.get() and data_fim_entry.get():
+                    filtro_data(data_ini_entry.get(), data_fim_entry.get())
+                    calcular_banco()
+                    data_ini_entry.destroy()
+                    data_fim_entry.destroy()
+                    ini_label.destroy()
+                    ate_label.destroy()
+                    search_btn.destroy()
+                    botao.config(state="normal")
+
+            search_btn = tk.Button(nav, text="✅", command=send_data, font=(10), relief=tk.FLAT)
+            search_btn.pack(side=tk.LEFT, padx=10, pady=5)
+            botao.config(state="disable")
+        
+        clicked = tk.Button(nav, text="Filtrar", font=("Arial", 10, "bold"), relief=tk.GROOVE)
+        clicked.config(command=lambda: aplicar_filtro(clicked))
+        clicked.pack(side=tk.LEFT, padx=10, pady=5)
         banco.wait_window() 
     
     # Botão para adicionar a entrada
