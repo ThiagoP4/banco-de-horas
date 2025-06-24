@@ -61,7 +61,7 @@ def ler_arquivo(db_manager_instance):
         try:
             # Adicionando data e horários à lista
             idhorario.append(registro[0])
-            data = datetime.strptime(registro[1], "%d/%m/%Y")
+            data = datetime.strptime(registro[1], "%Y-%m-%d")
             datas.append(data)
             hora_entrada.append(datetime.strptime(registro[2],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
             entra_almoco.append(datetime.strptime(registro[3],"%H:%M").replace(year=data.year, month=data.month, day=data.day))
