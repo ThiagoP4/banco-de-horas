@@ -6,7 +6,7 @@ def calcular_horas(horas_entrada, entra_almoco, saida_almoco, horas_saida, seman
     banco = timedelta(0)
 
     if not horas_entrada: # Se a lista de entradas estiver vazia, não há o que calcular
-        return "+00:00"
+        return "00:00"
     
     for entrada, e_almoco, s_almoco, saida, sp in zip(horas_entrada, entra_almoco, saida_almoco, horas_saida, semana_prova):
         
@@ -35,7 +35,7 @@ def calcular_horas(horas_entrada, entra_almoco, saida_almoco, horas_saida, seman
     sinal = '-' if banco < timedelta(0) else '+'
 
     # Formatando a exibição corretamente
-    resultado = f'{sinal} {horas_banco:02}:{minutos_banco:02}'
+    resultado = f'{sinal}{horas_banco:02}:{minutos_banco:02}'
 
     # Atualiza o texto no label com o resultado formatado
     return resultado
