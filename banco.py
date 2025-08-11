@@ -3,8 +3,7 @@ from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
 from datetime import datetime, timedelta
-import sqlite3
-from sqlite3 import Error
+
 
 from db_manager import DatabaseManager
 from calculadora_horas import calcular_horas, ler_arquivo
