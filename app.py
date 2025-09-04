@@ -5,8 +5,7 @@ import pyvisual as pv
 from gui.ui.ui import create_ui
 from db_manager import DatabaseManager 
 from calculadora_horas import calcular_horas, ler_arquivo 
-from datetime import datetime, timedelta
-from PySide6.QtCore import QTimer
+from datetime import datetime
 
 # ==================================================
 # ================ 1. LOGIC CODE ====================

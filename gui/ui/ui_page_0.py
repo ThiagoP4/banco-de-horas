@@ -8,21 +8,61 @@ def create_page_0_ui(window,ui):
     :return: Dictionary of UI elements.
     """
     ui_page = {}
-    ui_page["Rectangle_0"] = pv.PvRectangle(container=window, x=-2, y=-13, width=736,
-        height=48, idle_color=(60, 60, 58, 1), border_color=None, border_thickness=0,
-        corner_radius=0, border_style="solid", opacity=1, is_visible=True,
+
+    ui_page["Circle_0"] = pv.PvCircle(container=window, x=54, y=454, width=26,
+        height=26, idle_color=(50, 50, 50, 1), border_color=(0, 0, 0, 1), border_thickness=0,
+        border_style="solid", on_hover=None, on_click=None, on_release=None,
+        opacity=1, is_visible=True, tag=None)
+
+    ui_page["Circle_1"] = pv.PvCircle(container=window, x=87, y=455, width=23,
+        height=23, idle_color=(60, 60, 58, 1), border_color=(0, 0, 0, 1), border_thickness=0,
+        border_style="solid", on_hover=None, on_click=None, on_release=None,
+        opacity=1, is_visible=True, tag=None)
+
+    ui_page["Circle_2"] = pv.PvCircle(container=window, x=116, y=456, width=22,
+        height=22, idle_color=(75, 73, 75, 1), border_color=(0, 0, 0, 1), border_thickness=0,
+        border_style="solid", on_hover=None, on_click=None, on_release=None,
+        opacity=1, is_visible=True, tag=None)
+
+    ui_page["menu_bar"] = pv.PvRectangle(container=window, x=-2, y=-6, width=141,
+        height=508, idle_color=(60, 60, 58, 1), border_color=None, border_thickness=0,
+        corner_radius=10, border_style="solid", opacity=1, is_visible=False,
         on_hover=None, on_click=None, on_release=None, tag=None)
 
-    ui_page["Icon_1"] = pv.PvIcon(container=window, x=7, y=8, width=21,
+    ui_page["menu_list"] = pv.PvRectangle(container=window, x=-2, y=-4, width=56,
+        height=508, idle_color=(60, 60, 58, 1), border_color=None, border_thickness=0,
+        corner_radius=10, border_style="solid", opacity=1, is_visible=True,
+        on_hover=None, on_click=None, on_release=None, tag=None)
+
+    ui_page["config_section"] = pv.PvIcon(container=window, x=12, y=265, width=18,
+        height=18, idle_color=(255, 255, 255, 1), preserve_original_colors=False, icon_path='assets/icons/3ca7768bc4.svg',
+        corner_radius=25, flip_v=False, flip_h=False, rotate=0,
+        border_color=None, border_hover_color=None, border_thickness=0, border_style="solid",
+        on_hover=None, on_click=None, on_release=None, is_visible=True,
+        opacity=1, tag=None)
+
+    ui_page["banco_section"] = pv.PvIcon(container=window, x=12, y=227, width=18,
+        height=18, idle_color=(255, 255, 255, 1), preserve_original_colors=False, icon_path='assets/icons/7791fcad21.svg',
+        corner_radius=9, flip_v=False, flip_h=False, rotate=0,
+        border_color=None, border_hover_color=None, border_thickness=0, border_style="solid",
+        on_hover=None, on_click=None, on_release=None, is_visible=True,
+        opacity=1, tag=None)
+
+    ui_page["Title"] = pv.PvRectangle(container=window, x=-2, y=-6, width=736,
+       height=44, idle_color=(39, 39, 39, 1), border_color=None, border_thickness=0,
+      corner_radius=0, border_style="solid", opacity=1, is_visible=True,
+      on_hover=None, on_click=None, on_release=None, tag=None)
+
+    ui_page["menu_btn"] = pv.PvIcon(container=window, x=10, y=8, width=21,
         height=21, idle_color=(255, 255, 255, 1), preserve_original_colors=False, icon_path='assets/icons/6b3cdb5a6f.svg',
         corner_radius=0, flip_v=False, flip_h=False, rotate=0,
         border_color=None, border_hover_color=None, border_thickness=0, border_style="solid",
         on_hover=None, on_click=None, on_release=None, is_visible=True,
         opacity=1, tag=None)
 
-    ui_page["Rectangle_2"] = pv.PvRectangle(container=window, x=140, y=101, width=427,
-        height=297, idle_color=(75, 73, 75, 1), border_color=None, border_thickness=0,
-        corner_radius=18, border_style="solid", opacity=0.75, is_visible=True,
+    ui_page["Rectangle_9"] = pv.PvRectangle(container=window, x=149, y=108, width=412,
+        height=300, idle_color=(51, 48, 48, 1), border_color=None, border_thickness=0,
+        corner_radius=13, border_style="solid", opacity=0.7, is_visible=True,
         on_hover=None, on_click=None, on_release=None, tag=None)
 
     ui_page["Text_3"] = pv.PvText(container=window, x=262, y=10, width=174,
@@ -31,6 +71,13 @@ def create_page_0_ui(window,ui):
         font_color=(255, 255, 255, 1), bold=False, italic=False, underline=False,
         strikethrough=False, opacity=1, border_color=None, corner_radius=0,
         on_hover=None, on_click=None, on_release=None, tag=None)
+    
+    ui_page["user_section"] = pv.PvIcon(container=window, x=13, y=188, width=18,
+        height=18, idle_color=(255, 255, 255, 1), preserve_original_colors=False, icon_path='assets/icons/8a75e91c0e.svg',
+        corner_radius=10, flip_v=False, flip_h=False, rotate=0,
+        border_color=None, border_hover_color=None, border_thickness=0, border_style="solid",
+        on_hover=None, on_click=lambda el: ui["pages"].set_current_page(2), on_release=None, is_visible=True,
+        opacity=1, tag=None)
 
     ui_page["DayMonth"] = pv.PvTextInput(container=window, x=562, y=10, width=67,
         height=16, background_color=(255, 255, 255, 1), is_visible=True, placeholder='dd/mm',
@@ -162,6 +209,13 @@ def create_page_0_ui(window,ui):
         font_color=(255, 255, 255, 1), bold=False, italic=False, underline=False,
         strikethrough=False, opacity=1, border_color=None, corner_radius=0,
         on_hover=None, on_click=None, on_release=None, tag=None)
+    
+    ui_page["logout"] = pv.PvIcon(container=window, x=12, y=458, width=18,
+        height=18, idle_color=(253, 253, 253, 1), preserve_original_colors=False, icon_path='assets/icons/0b1319cefc.svg',
+        corner_radius=0, flip_v=False, flip_h=False, rotate=0,
+        border_color=None, border_hover_color=None, border_thickness=0, border_style="solid",
+        on_hover=None, on_click=None, on_release=None, is_visible=True,
+        opacity=1, tag=None)
 
     ui_page["title_semana_prova"] = pv.PvText(container=window, x=468, y=368, width=89,
         height=12, idle_color=(194, 155, 215, 0), text='Semana de Prova', is_visible=True,
@@ -169,21 +223,6 @@ def create_page_0_ui(window,ui):
         font_color=(255, 255, 255, 1), bold=False, italic=False, underline=False,
         strikethrough=False, opacity=1, border_color=None, corner_radius=0,
         on_hover=None, on_click=None, on_release=None, tag=None)
-
-    ui_page["Circle_1"] = pv.PvCircle(container=window, x=28, y=454, width=26,
-        height=26, idle_color=(50, 50, 50, 1), border_color=(0, 0, 0, 1), border_thickness=0,
-        border_style="solid", on_hover=None, on_click=None, on_release=None,
-        opacity=1, is_visible=True, tag=None)
-
-    ui_page["Circle_2"] = pv.PvCircle(container=window, x=64, y=455, width=23,
-        height=23, idle_color=(60, 60, 58, 1), border_color=(0, 0, 0, 1), border_thickness=0,
-        border_style="solid", on_hover=None, on_click=None, on_release=None,
-        opacity=1, is_visible=True, tag=None)
-
-    ui_page["Circle_3"] = pv.PvCircle(container=window, x=98, y=456, width=22,
-        height=22, idle_color=(75, 73, 75, 1), border_color=(0, 0, 0, 1), border_thickness=0,
-        border_style="solid", on_hover=None, on_click=None, on_release=None,
-        opacity=1, is_visible=True, tag=None)
 
     ui_page["compensar_horas"] = pv.PvCheckbox(container=window, x=446, y=338, width=26,
         height=30, text='', is_checked=False, checked_color=(0, 0, 255, 1),
