@@ -3,6 +3,7 @@ from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QWidget, QVBoxLayo
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
 
+
 def create_page_1_ui(window, ui):
     ui_page = {}
 
